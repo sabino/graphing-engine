@@ -1,0 +1,93 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      upload_packages:
+        description: Upload installed packages when Actions storage is available
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Install public package
+        run: cmake --install build --config Release --prefix "${{ github.workspace }}/install"
+      - name: Configure external consumer
+        run: cmake -S tests/package-consumer -B consumer -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install"
+      - name: Build external consumer
+        run: cmake --build consumer --config Release --parallel 4
+      - name: Run external consumer
+        if: runner.os != 'Windows'
+        run: ./consumer/graphing-consumer
+      - name: Run external Windows consumer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "$PWD/install/bin;$env:PATH"
+          ./consumer/Release/graphing-consumer.exe
+      - name: Render through the public contract
+        if: runner.os != 'Windows'
+        run: ./build/graphing-cli 'y=x^2-4' build/graph.svg
+      - name: Package installed library
+        run: cmake -E tar czf graphing-engine-${{ runner.os }}-${{ runner.arch }}.tar.gz --format=gnutar install
+      - name: Upload installed library
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: graphing-engine-${{ runner.os }}-${{ runner.arch }}
+          path: graphing-engine-${{ runner.os }}-${{ runner.arch }}.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  cairo:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Cairo headers
+        run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config
+      - name: Configure native drawing
+        run: cmake -S . -B build -DGRAPHING_BUILD_NATIVE_DRAWING=ON
+      - name: Build
+        run: cmake --build build --parallel 4
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Install public package
+        run: cmake --install build --prefix "${{ github.workspace }}/install"
+      - name: Configure external consumer
+        run: cmake -S tests/package-consumer -B consumer -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install"
+      - name: Build external consumer
+        run: cmake --build consumer --parallel 4
+      - name: Run external consumer
+        run: ./consumer/graphing-consumer
+      - name: Package installed library
+        run: cmake -E tar czf graphing-engine-Linux-${{ runner.arch }}-cairo.tar.gz --format=gnutar install
+      - name: Upload installed library
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: graphing-engine-Linux-${{ runner.arch }}-cairo
+          path: graphing-engine-Linux-${{ runner.arch }}-cairo.tar.gz
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,11 @@
+# id	parse_format	localization	angle	allow_parameters	parameters	select_index	expect_parse	expect_init	expect_analysis	input
+polynomial	Linear	PointComma	Radians	0	-	0	1	1	1	y=x^2-4
+repeated_root	Linear	CommaSemicolon	Radians	0	-	0	1	1	1	y=(x-1,5)^4
+rational_hole	Formula	PointComma	Radians	0	-	0	1	1	1	Equal[y,Divide[Subtract[Power[x,2],1],Subtract[x,1]]]
+parameter	Linear	PointComma	Radians	1	a=2	0	1	1	1	y=a*x^2-4
+degrees	Linear	PointComma	Degrees	0	-	0	1	1	1	y=sin(x)
+explicit_x	Linear	PointComma	Radians	0	-	0	1	1	1	x=y^2
+implicit	Linear	PointComma	Radians	0	-	0	1	1	0	x^2+y^2=4
+inequality	Linear	PointComma	Radians	0	-	0	1	1	0	y<x^2
+multi_equation	MathML	PointComma	Radians	0	-	1	1	1	1	<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>show2d</mi><mfenced separators=""><mrow><mi>plotEq2d</mi><mfenced separators=""><mrow><mi>y</mi><mo>=</mo><mi>x</mi></mrow></mfenced></mrow><mo>,</mo><mrow><mi>plotEq2d</mi><mfenced separators=""><mrow><mi>y</mi><mo>=</mo><msup><mi>x</mi><mn>2</mn></msup></mrow></mfenced></mrow></mfenced></mrow></math>
+parse_error	Linear	PointComma	Radians	0	-	-1	0	0	0	y=
